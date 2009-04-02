@@ -1,0 +1,80 @@
+-----------------------------------------
+What is TinyFBClient?
+-----------------------------------------
+TinyFBClient is a Java Client for talking to Facebook Rest Server.
+To make a Facebook API call, you populate a TreeMap with required parameters.
+You can them use the call method or getResponse.
+call will return a String of output from Facebook's response
+getResponse will return a ClientResponse.  (com.sun.jersey.api.client.ClientResponse)
+
+
+-----------------------------------------
+TinyClientExample Facebook Application
+-----------------------------------------
+http://apps.facebook.com/tinyclientexample
+
+TinyClientExample illustrates the use of the Java TinyFBClient to communicate with Facebook's REST Server.
+This app sends a notification, publishes to the newsFeed, , and gets a list of friends 
+Please add the Facebook App.
+
+
+-----------------------------------------
+TinyClientFBExample.jsp
+-----------------------------------------
+JSP source for TinyClient Example app.
+
+
+-----------------------------------------
+More info
+-----------------------------------------
+http://www.socialjava.com/random/
+
+
+-----------------------------------------
+Support - through Facebook Group
+-----------------------------------------
+http://apps.facebook.com/tinyclientexample
+
+
+-----------------------------------------
+Usage - examples
+-----------------------------------------
+1. Call friends.get with a specific user id.  Does not require a Facebook session.
+        TinyFBClient fb = new TinyFBClient("APPLICATION ID","SECRET KEY");
+       	TreeMap<String, String> tm = new TreeMap<String, String>();
+        tm.put("uid", "725391757");
+        String friendList = fb.call("friends.get", tm);
+
+2. Call friends.get for a logged on user. Requires a Facebook session.
+
+	TinyFBClient fb = new TinyFBClient(
+				"Application ID",
+				"SecretKey", 
+                                 sessionKey);
+		TreeMap<String, String> tm = new TreeMap<String, String>();
+        	tm.put("uid", ""); // empty String for logged on user
+		currentUsersFriends = fb.call("friends.get",tm);
+
+3. JSON is default. Set TinyFBClient format to XML.
+	        TinyFBClient fb = new TinyFBClient(
+				"Application ID",
+				"SecretKey", 
+                                 sessionKey);
+		fb.setFormat("XML");
+		TreeMap<String, String> tm = new TreeMap<String, String>();
+
+        	tm.put("uid", ""); // empty String for logged on user
+		currentUsersFriends = fb.call("friends.get",tm);
+
+4. Send Notification, return ClientResponse
+		int status;
+		ClientResponse c;
+
+		tm.clear();
+		tm.put("to_ids", ""); // to logged on user
+		tm.put("notification", "Thanks for trying TinyClientExample.");
+		c = fb.getResponse("notifications.send", tm);
+		status = c.getStatus(); //200 for good response.  
+
+
+
