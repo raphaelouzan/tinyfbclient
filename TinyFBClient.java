@@ -36,14 +36,22 @@ public class TinyFBClient {
 	String callId;
     //post.addParameter("call_id", );
 	
+	public TinyFBClient( ){
+		standardParms.put("v", version);
+		standardParms.put("format", format);
+		restClient = Client.create();
+	}
+		
+	
 	public TinyFBClient( String appIdParm, String appSecretParm){
+		this();
 		apiKey=appIdParm;
 		secretKey=appSecretParm;
 		standardParms.put("secret_key", secretKey);
 		standardParms.put("api_key", apiKey);
-		standardParms.put("v", version);
-		standardParms.put("format", format);
-		restClient = Client.create();
+	//	standardParms.put("v", version);
+	//	standardParms.put("format", format);
+	//	restClient = Client.create();
 	}
 
 	public TinyFBClient( String appIdParm, String appSecretParm, String sessionParm){
@@ -60,7 +68,17 @@ public class TinyFBClient {
 		standardParms.put("format", format);
 		
 	}
-
+/*
+	public TinyFBClient( TinyFBClient tiny){
+		this(tiny.apiKey, tiny.secretKey, tiny.session);
+		this.version=tiny.version;
+		this.format=tiny.format;
+		standardParms.put("v", this.version);
+		standardParms.put("format", this.format);
+		
+	}
+*/
+	
 	public  ClientResponse getResponse(TreeMap<String,String> parms){
 		String currentKey;
 		String currentValue;
@@ -111,8 +129,10 @@ public class TinyFBClient {
 
 	
 	public String call(TreeMap<String,String> parms){
-		restResponse = this.getResponse(parms);
-		return(restResponse.getEntity(String.class));
+		ClientResponse thisResponse;
+
+		thisResponse = this.getResponse(parms);
+		return(thisResponse.getEntity(String.class));
 	}
 	public String call(String method, TreeMap<String,String> parms){
 		parms.put("method", method);
@@ -159,5 +179,25 @@ public class TinyFBClient {
 
 	}
 
+	public void setApiKey(String apiKey){
+		this.apiKey=apiKey;
+		standardParms.put("api_key", apiKey);
+		
+	}
+
+	public String getApiKey(){
+		return(this.apiKey);
+	}
+
+
+	public void setSecretKey(String secretKey){
+		this.secretKey=secretKey;
+		standardParms.put("secret_key", secretKey);
+		
+	}
+	public String getSecretKey(){
+		return(this.secretKey);
+	}
+	
 	
 }
