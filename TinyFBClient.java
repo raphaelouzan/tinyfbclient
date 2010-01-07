@@ -16,11 +16,17 @@ import java.util.TreeMap;
 
 import javax.ws.rs.core.UriBuilder;
 
+import com.allen_sauer.gwt.log.client.Log;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.uri.UriComponent;
 
+/**
+ * @note Not well designed
+ * @author raphaelouzan
+ * 
+ */
 public class TinyFBClient {
 	private static final String DEFAULT_API_VERSION = "1.0";
 	private static final String DEFAULT_RESPONSE_FORMAT = "JSON";
@@ -58,44 +64,39 @@ public class TinyFBClient {
 	public void setRequestParms(TreeMap<String, String> parms) {
 		this.queryParameters.putAll(parms);
 	}
-	
-		public ClientResponse getResponse(TreeMap<String, String> params) {
-		String signatureValue = ""; // String used for creating signature
-		String encodedParm;
-		
+
+	public ClientResponse getResponse(TreeMap<String, String> params) {
+		StringBuilder queryValueToSign = new StringBuilder();
+
 		this.queryParameters.putAll(params);
-		this.queryParameters.put("call_id", String.valueOf(System.currentTimeMillis()));
+		this.queryParameters.put("call_id", String.valueOf(System
+				.currentTimeMillis()));
 
 		UriBuilder uriBuilder = UriBuilder.fromUri(FACEBOOK_REST_SERVER_URL);
-		for (String key : this.queryParameters.keySet()) { 
+		
+		for (String key : this.queryParameters.keySet()) {
 			String value = this.queryParameters.get(key);
-			signatureValue += key + "=" + value;
-			// TODO should be a &&
-			if ((value.indexOf("{") >= 0)
-					|| (value.indexOf("}") >= 0)) { // if passing JSON
-															// Array, encode the
-															// {}
-				encodedParm = UriComponent.contextualEncode(value, UriComponent.Type.QUERY_PARAM, false);
-				uriBuilder.queryParam(key, encodedParm);
-			} else {
-				uriBuilder.queryParam(key, value);
-			}
-			
+			queryValueToSign.append(key);
+			queryValueToSign.append("=");
+			queryValueToSign.append(value);
+			uriBuilder.queryParam(key, UriComponent.contextualEncode(value,
+					UriComponent.Type.QUERY_PARAM, false));
 		}
 
-		String signature = generateSignature(signatureValue, this.queryParameters.get("secret_key"));
+		String signature = generateSignature(queryValueToSign.toString(),
+				this.queryParameters.get("secret_key"));
 
+		// Adding the signature
 		uriBuilder.queryParam("sig", signature);
-		
+
+		// Making the call
 		URI uri = uriBuilder.build();
-		
 		WebResource resource = this.restClient.resource(uri);
-		
 		ClientResponse restResponse = resource.get(ClientResponse.class);
+
 		return restResponse;
 
 	}
-
 
 	public ClientResponse getResponse(String method,
 			TreeMap<String, String> params) {
@@ -123,7 +124,7 @@ public class TinyFBClient {
 			}
 			return result.toString();
 		} catch (NoSuchAlgorithmException e) {
-			System.console.println("No MD5 algorithm!");
+			System.out.println("No MD5 algorithm!", e);
 			return null;
 		}
 	}
