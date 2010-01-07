@@ -9,195 +9,123 @@
 
 
 package com.socialjava;
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.WebResource;
-import com.sun.jersey.api.client.ClientResponse;
-import javax.ws.rs.core.MediaType;
 import java.net.URI;
-import javax.ws.rs.core.UriBuilder;
-import java.util.TreeMap;
-import java.util.Iterator;
-import java.util.Collection;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.TreeMap;
+
+import javax.ws.rs.core.UriBuilder;
+
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.uri.UriComponent;
 
-
 public class TinyFBClient {
-	String apiKey;
-	String secretKey;
-	String version="1.0";
-	String format="JSON";
-	String session;
-	TreeMap<String,String> standardParms=new TreeMap<String,String>();
-	ClientResponse restResponse;
-	Client restClient;
-	String facebookRestServer = "http://api.facebook.com/restserver.php";
-	String callId;
-    //post.addParameter("call_id", );
-	
-	public TinyFBClient( ){
-		standardParms.put("v", version);
-		standardParms.put("format", format);
-		restClient = Client.create();
+	private static final String DEFAULT_API_VERSION = "1.0";
+	private static final String DEFAULT_RESPONSE_FORMAT = "JSON";
+	private static final String FACEBOOK_REST_SERVER_URL = "http://api.facebook.com/restserver.php";
+
+	private TreeMap<String, String> queryParameters = new TreeMap<String, String>();
+	private Client restClient;
+
+	public TinyFBClient() {
+		this.queryParameters.put("v", DEFAULT_API_VERSION);
+		this.queryParameters.put("format", DEFAULT_RESPONSE_FORMAT);
+		this.restClient = Client.create();
 	}
-		
-	
-	public TinyFBClient( String appIdParm, String appSecretParm){
+
+	public TinyFBClient(String facebookApiKey, String facebookSecretKey) {
 		this();
-		apiKey=appIdParm;
-		secretKey=appSecretParm;
-		standardParms.put("secret_key", secretKey);
-		standardParms.put("api_key", apiKey);
-	//	standardParms.put("v", version);
-	//	standardParms.put("format", format);
-	//	restClient = Client.create();
+		this.queryParameters.put("secret_key", facebookSecretKey);
+		this.queryParameters.put("api_key", facebookApiKey);
 	}
 
-	public TinyFBClient( String appIdParm, String appSecretParm, String sessionParm){
-		this(appIdParm,appSecretParm);
-		session=sessionParm;
-		standardParms.put("session_key", sessionParm);
+	public TinyFBClient(String facebookApiKey, String facebookSecretKey,
+			String sessionKey) {
+		this(facebookApiKey, facebookSecretKey);
+		this.queryParameters.put("session_key", sessionKey);
 	}
 
-	public TinyFBClient( String appIdParm, String appSecretParm, String sessionParm, String versionParm, String formatParm){
-		this(appIdParm,appSecretParm,sessionParm);
-		version=versionParm;
-		format=formatParm;
-		standardParms.put("v", version);
-		standardParms.put("format", format);
-		
+	public TinyFBClient(String facebookApiKey, String facebookSecretKey,
+			String sessionKey, String apiVersion, String responseFormat) {
+		this(facebookApiKey, facebookSecretKey, sessionKey);
+		this.queryParameters.put("v", apiVersion);
+		this.queryParameters.put("format", responseFormat);
+
 	}
-/*
-	public TinyFBClient( TinyFBClient tiny){
-		this(tiny.apiKey, tiny.secretKey, tiny.session);
-		this.version=tiny.version;
-		this.format=tiny.format;
-		standardParms.put("v", this.version);
-		standardParms.put("format", this.format);
-		
+
+	public void setRequestParms(TreeMap<String, String> parms) {
+		this.queryParameters.putAll(parms);
 	}
-*/
 	
-	public  ClientResponse getResponse(TreeMap<String,String> parms){
-		String currentKey;
-		String currentValue;
-		String sigParms=""; //String used for creating signature
+		public ClientResponse getResponse(TreeMap<String, String> params) {
+		String signatureValue = ""; // String used for creating signature
 		String encodedParm;
-		UriBuilder ub =UriBuilder.fromPath(facebookRestServer);
-		TreeMap<String,String>restParms = new TreeMap<String,String>();
-		restParms.putAll(standardParms);
-		restParms.putAll(parms);
-		restParms.put("call_id", String.valueOf(System.currentTimeMillis()));
+		
+		this.queryParameters.putAll(params);
+		this.queryParameters.put("call_id", String.valueOf(System.currentTimeMillis()));
 
-		Collection<String> c = restParms.keySet();
-		Iterator<String> itr = c.iterator();
-
-		while(itr.hasNext()){
-			  currentKey = (String)itr.next();
-			  currentValue = restParms.get(currentKey);
-			  sigParms = sigParms +currentKey+"="+currentValue;
-			  if ((currentValue.indexOf("{")>=0)||(currentValue.indexOf("}")>=0)){ //if passing JSON Array, encode the {}
-				  encodedParm = UriComponent.contextualEncode(
-		   				    restParms.get(currentKey), 
-			   			    UriComponent.Type.QUERY_PARAM,
-			   			    false);
-			      ub.queryParam(currentKey,encodedParm);
-			  }else{
-				  ub.queryParam(currentKey,currentValue);
-			  }
-
+		UriBuilder uriBuilder = UriBuilder.fromUri(FACEBOOK_REST_SERVER_URL);
+		for (String key : this.queryParameters.keySet()) { 
+			String value = this.queryParameters.get(key);
+			signatureValue += key + "=" + value;
+			// TODO should be a &&
+			if ((value.indexOf("{") >= 0)
+					|| (value.indexOf("}") >= 0)) { // if passing JSON
+															// Array, encode the
+															// {}
+				encodedParm = UriComponent.contextualEncode(value, UriComponent.Type.QUERY_PARAM, false);
+				uriBuilder.queryParam(key, encodedParm);
+			} else {
+				uriBuilder.queryParam(key, value);
+			}
+			
 		}
-		String signature = generateSignature(sigParms,secretKey);
+
+		String signature = generateSignature(signatureValue, this.queryParameters.get("secret_key"));
+
+		uriBuilder.queryParam("sig", signature);
 		
-		ub.queryParam("sig",signature);
-		WebResource resource;
-		URI uri;
-		uri = ub.build();
-		resource = restClient.resource(uri);
-		restResponse =resource.get(ClientResponse.class); 
+		URI uri = uriBuilder.build();
 		
+		WebResource resource = this.restClient.resource(uri);
 		
-	    return(restResponse);
-		
-	}
-
-	public ClientResponse getResponse(String method, TreeMap<String,String> parms){
-		parms.put("method", method);
-		return(this.getResponse(parms));
-	}
-
-	
-	public String call(TreeMap<String,String> parms){
-		ClientResponse thisResponse;
-
-		thisResponse = this.getResponse(parms);
-		return(thisResponse.getEntity(String.class));
-	}
-	public String call(String method, TreeMap<String,String> parms){
-		parms.put("method", method);
-		return(this.call(parms));
-	}
-
-	
-	public String generateSignature(String requestString, String secretKey){
-		requestString = requestString+secretKey;
-		 StringBuilder result = new StringBuilder();
-		 try {
-			   MessageDigest md = MessageDigest.getInstance("MD5");
-			   for (byte b : md.digest(requestString.toString().getBytes())) {
-				   result.append(Integer.toHexString((b & 0xf0) >>> 4));
-				   result.append(Integer.toHexString(b & 0x0f));
-				 }
-			   return(result.toString());
-		 } catch (NoSuchAlgorithmException e) {
-			   return("Error: no MD5 ");
-		 }
-	}
-	
-	
-	public void setRequestParms(TreeMap<String,String> parms){
-		TreeMap<String,String>requestParms = new TreeMap<String,String>();
-		requestParms.putAll(standardParms);
-		requestParms.putAll(parms);
-	}
-	
-	public void setSession(String sessionParm){
-		this.session=sessionParm;
-		standardParms.put("session_key", session);
-	}
-
-	public void setFormat(String formatParm){
-		this.format=formatParm;
-		standardParms.put("format", format);
+		ClientResponse restResponse = resource.get(ClientResponse.class);
+		return restResponse;
 
 	}
 
-	public void setVersion(String versionParm){
-		this.version=versionParm;
-		standardParms.put("v", version);
 
+	public ClientResponse getResponse(String method,
+			TreeMap<String, String> params) {
+		params.put("method", method);
+		return getResponse(params);
 	}
 
-	public void setApiKey(String apiKey){
-		this.apiKey=apiKey;
-		standardParms.put("api_key", apiKey);
-		
+	public String call(TreeMap<String, String> params) {
+		return getResponse(params).getEntity(String.class);
 	}
 
-	public String getApiKey(){
-		return(this.apiKey);
+	public String call(String method, TreeMap<String, String> params) {
+		params.put("method", method);
+		return call(params);
 	}
 
+	public String generateSignature(String requestString, String secretKey) {
+		requestString = requestString + secretKey;
+		StringBuilder result = new StringBuilder();
+		try {
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			for (byte b : md.digest(requestString.toString().getBytes())) {
+				result.append(Integer.toHexString((b & 0xf0) >>> 4));
+				result.append(Integer.toHexString(b & 0x0f));
+			}
+			return result.toString();
+		} catch (NoSuchAlgorithmException e) {
+			System.console.println("No MD5 algorithm!");
+			return null;
+		}
+	}
 
-	public void setSecretKey(String secretKey){
-		this.secretKey=secretKey;
-		standardParms.put("secret_key", secretKey);
-		
-	}
-	public String getSecretKey(){
-		return(this.secretKey);
-	}
-	
-	
 }
